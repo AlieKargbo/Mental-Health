@@ -18,7 +18,7 @@ interface CheckinFormProps {
 const CheckinForm: React.FC<CheckinFormProps> = ({ onSuccess }) => {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [spinnerVisible, setSpinnerVisible] = useState(true);
+//   const [spinnerVisible, setSpinnerVisible] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isListening, transcript, startListening, stopListening, resetTranscript, isSupported } = useVoiceInput();
 
