@@ -37,7 +37,7 @@ export const API_BASE_URL = getApiBaseUrl();
 
 // Export individual endpoint builders
 export const endpoints = {
-  checkin: `${API_BASE_URL}/checkin`,
+  checkin: `${API_BASE_URL}checkin`,
   authAnon: `${API_BASE_URL}/auth/anon`,
 } as const;
 
