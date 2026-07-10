@@ -22,7 +22,7 @@ const getApiBaseUrl = (): string => {
   //https://apkargbo-wellshift-backend.hf.space
   // Production fallback - if we're in production and no env var, use the deployed backend
   if (import.meta.env?.PROD) {
-    const prodUrl = 'https://apkargbo-wellshift-backend-v1.hf.space/';
+    const prodUrl = 'https://apkargbo-wellshift-backend-v1.hf.space';
     console.log(' Using hardcoded production API URL (fallback):', prodUrl);
     return prodUrl;
   }
