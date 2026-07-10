@@ -146,15 +146,15 @@ const CheckinForm: React.FC<CheckinFormProps> = ({ onSuccess }) => {
 
   return (
     <div>
-        {/* {spinnerVisible ?  */}
-            // Source - https://stackoverflow.com/a/47842233
-            // Posted by Alex
-            // Retrieved 2026-07-09, License - CC BY-SA 3.0
+      {/* {spinnerVisible ? */}
+      {/* Source - https://stackoverflow.com/a/47842233
+        Posted by Alex
+        Retrieved 2026-07-09, License - CC BY-SA 3.0 */}
 
-            {/* <img src={spinner} alt="loading..." /> */}
+      {/* <img src={spinner} alt="loading..." /> */}
 
-        //: 
-            <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
+      {/* : */}
+        <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">Daily Mental Health Check-in</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
