@@ -19,12 +19,18 @@ const getApiBaseUrl = (): string => {
     return envUrl.trim();
   }
   
-  //https://apkargbo-wellshift-backend.hf.space
-  // Production fallback - if we're in production and no env var, use the deployed backend
+  
+  // Production fallback - require explicit env var for production builds.
+  // Default to development host but warn loudly to prevent accidental calls
+  // to a hardcoded third-party backend when VITE_API_BASE_URL is missing.
   if (import.meta.env?.PROD) {
-    const prodUrl = 'https://apkargbo-wellshift-backend-v1.hf.space';
-    console.log(' Using hardcoded production API URL (fallback):', prodUrl);
-    return prodUrl;
+    const fallbackDev = 'http://localhost:8000';
+    console.warn(
+      'VITE_API_BASE_URL is not set for production build. Defaulting to',
+      fallbackDev,
+      '\nPlease set VITE_API_BASE_URL during your CI/build step to the correct backend URL for production.'
+    );
+    return fallbackDev;
   }
   
   // Development fallback
@@ -35,10 +41,15 @@ const getApiBaseUrl = (): string => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+// Normalize base URL (remove any trailing slashes) to avoid accidental '//' when
+// joining paths (some hosts may reject double slashes).
+const normalizeBase = (url: string) => url.replace(/\/+$/, '');
+const BASE = normalizeBase(API_BASE_URL);
+
 // Export individual endpoint builders
 export const endpoints = {
-  checkin: `${API_BASE_URL}/checkin`,
-  authAnon: `${API_BASE_URL}/auth/anon`,
+  checkin: `${BASE}/checkin`,
+  authAnon: `${BASE}/auth/anon`,
 } as const;
 
 // Log the final configuration for debugging
