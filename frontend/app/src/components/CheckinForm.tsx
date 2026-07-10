@@ -3,11 +3,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { endpoints } from '../config';
-// Source - https://stackoverflow.com/a/47842233
-// Posted by Alex
-// Retrieved 2026-07-09, License - CC BY-SA 3.0
 
-// import spinner from '../assets/spinner.gif'
 
 interface CheckinFormProps {
   onSuccess: () => void; // Callback to refresh the chart after a successful submission
