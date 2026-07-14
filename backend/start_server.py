@@ -15,6 +15,6 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=port,
-        reload=True,  # Auto-reload on code changes
+        reload=not is_production,  # Auto-reload on code changes
         log_level="info"
     )
