@@ -6,155 +6,189 @@ import { endpoints } from '../config';
 
 
 interface CheckinFormProps {
-  onSuccess: () => void; // Callback to refresh the chart after a successful submission
+    onSuccess: () => void; // Callback to refresh the chart after a successful submission
 }
 
 //Wellshift-Backend-v1
 
 const CheckinForm: React.FC<CheckinFormProps> = ({ onSuccess }) => {
-  const [text, setText] = useState('');
-  const [loading, setLoading] = useState(false);
-//   const [spinnerVisible, setSpinnerVisible] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { isListening, transcript, startListening, stopListening, resetTranscript, isSupported } = useVoiceInput();
+    const [text, setText] = useState('');
+    const [loading, setLoading] = useState(false);
+    //const [spinnerVisible, setSpinnerVisible] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const { isListening, transcript, startListening, stopListening, resetTranscript, isSupported } = useVoiceInput();
 
-  // Update text when voice transcript changes
-  useEffect(() => {
-    if (transcript) {
-      setText(prev => prev + (prev ? ' ' : '') + transcript);
-      resetTranscript();
-    }
-  }, [transcript, resetTranscript]);
+    // Update text when voice transcript changes
+    useEffect(() => {
+        if (transcript) {
+            setText(prev => prev + (prev ? ' ' : '') + transcript);
+            resetTranscript();
+        }
+    }, [transcript, resetTranscript]);
 
-  const getAnonUserId = async (): Promise<string> => {
-    let anonUserId = localStorage.getItem('anonUserId');
-    if (anonUserId) {
-      return anonUserId;
-    }
+    const getAnonUserId = async (): Promise<string> => {
+        let anonUserId = localStorage.getItem("anonUserId");
 
-    try {
-      const response = await axios.get(endpoints.authAnon, {
-        headers: { 'Accept': 'application/json' },
-        timeout: 15000,
-      });
+        if (anonUserId) {
+            return anonUserId;
+        }
 
-      anonUserId = response.data?.anon_user_id;
-      if (anonUserId) {
-        localStorage.setItem('anonUserId', anonUserId);
-        return anonUserId;
-      }
-    } catch (err) {
-      console.warn('CheckinForm: Unable to fetch anonymous user id from backend, using local fallback.', err);
-    }
+        try {
+            console.log("GET", endpoints.authAnon);
 
-    anonUserId = `anon-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem('anonUserId', anonUserId);
-    return anonUserId;
-  };
+            const response = await axios.get(endpoints.authAnon, {
+                headers: {
+                    Accept: "application/json",
+                },
+            });
 
-  const getLocalEntriesKey = (anonUserId: string) => `dailyEntries_${anonUserId}`;
+            anonUserId = response.data.anon_user_id;
 
-  const saveEntryLocally = (entry: any, anonUserId: string) => {
-    const key = getLocalEntriesKey(anonUserId);
-    const localEntries = JSON.parse(localStorage.getItem(key) || '[]');
-    localEntries.push(entry);
-    localStorage.setItem(key, JSON.stringify(localEntries));
-  };
+            if (anonUserId) {
+                localStorage.setItem("anonUserId", anonUserId);
+                return anonUserId;
+            }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (text.trim().length < 20) {
-      setError("Please write at least 20 characters for a meaningful analysis.");
-      return;
-    }
+            throw new Error("Backend did not return anon_user_id");
+        } catch (err) {
+            console.warn("Using locally generated anonymous ID.", err);
 
-    setLoading(true);
-    setError(null);
+            anonUserId = `anon-${crypto.randomUUID()}`;
+            localStorage.setItem("anonUserId", anonUserId);
 
-    try {
-      const anonUserId = await getAnonUserId();
-      // Use the centralized endpoint configuration
-      const response = await axios.post(endpoints.checkin, {
-        user_text: text,
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Anon-User-Id': anonUserId,
-        },
-        timeout: 30000, // 30 second timeout
-      });
+            return anonUserId;
+        }
+    };
 
-      console.log('Check-in submitted successfully:', response.data);
-      
-      if (response.data?.anon_user_id) {
-        localStorage.setItem('anonUserId', response.data.anon_user_id);
-      }
-      
-      const sentimentLabel = response.data.sentiment_score > 0.6 ? 'positive' : 
-                            response.data.sentiment_score < 0.4 ? 'concerning' : 'neutral';
-      console.log(`Sentiment analysis: ${sentimentLabel} (${(response.data.sentiment_score * 100).toFixed(1)}%)`);
-      
-      const newEntry = {
-        id: response.data.id,
-        timestamp: response.data.timestamp,
-        sentiment_score: response.data.sentiment_score,
-        anomaly_flag: response.data.anomaly_flag,
-        user_text: text.trim(),
-        anon_user_id: response.data?.anon_user_id || anonUserId,
-      };
-      saveEntryLocally(newEntry, anonUserId);
-      console.log('CheckinForm: Added entry to localStorage');
-      
-      setText('');
-      onSuccess();
-    } catch (err: any) {
-      console.error('CheckinForm: API error:', err);
-      
-      if (err.code === 'ECONNABORTED') {
-        setError("Request timed out. The server might be starting up, please try again in a moment.");
-      } else if (err.response?.status === 500) {
-        setError("Server error. The backend database might be unavailable. Your entry has been saved locally.");
-      } else if (err.response?.status >= 400) {
-        setError(`Server error (${err.response.status}): ${err.response.data?.detail || 'Unknown error'}`);
-      } else if (err.request) {
-        setError("Cannot connect to server. Please check your internet connection or try again later.");
-      } else {
-        setError("Failed to submit entry. Please try again.");
-      }
-      
-      // Even if backend fails, save to localStorage as offline backup
-      const offlineEntry = {
-        id: `offline-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        sentiment_score: 0.5, // Default neutral sentiment
-        anomaly_flag: false,
-        user_text: text.trim(),
-        offline: true,
-        anon_user_id: localStorage.getItem('anonUserId') || `anon-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      };
-      saveEntryLocally(offlineEntry, offlineEntry.anon_user_id);
-      console.log('CheckinForm: Saved offline entry to localStorage');
-      
-      // Still trigger refresh to show the offline entry
-      setText('');
-      onSuccess();
-    } finally {
-      setLoading(false);
-    }
-  };
+    const getLocalEntriesKey = (anonUserId: string) => `dailyEntries_${anonUserId}`;
 
-  return (
-    <div>
-      {/* {spinnerVisible ? */}
-      {/* Source - https://stackoverflow.com/a/47842233
+    const saveEntryLocally = (entry: any, anonUserId: string) => {
+        const key = getLocalEntriesKey(anonUserId);
+        const localEntries = JSON.parse(localStorage.getItem(key) || '[]');
+        localEntries.push(entry);
+        localStorage.setItem(key, JSON.stringify(localEntries));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // 1. Validation Check
+        if (text.trim().length < 20) {
+            setError("Please write at least 20 characters for a meaningful analysis.");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        // Track the current user ID for the fallback block scope
+        let currentAnonUserId = localStorage.getItem('anonUserId') || '';
+
+        try {
+            // 2. Retrieve Anonymous User ID
+            currentAnonUserId = await getAnonUserId();
+
+            // 3. Make API POST Request using centralized endpoints
+            const response = await axios.post(endpoints.checkin, {
+                user_text: text.trim(),
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Anon-User-Id': currentAnonUserId,
+                },
+                timeout: 15000, // 15-second timeout for snappy responsiveness
+            });
+
+            console.log('Check-in submitted successfully:', response.data);
+
+            // 4. Update local tracking ID if backend returns a refreshed one
+            if (response.data?.anon_user_id) {
+                currentAnonUserId = response.data.anon_user_id;
+                localStorage.setItem('anonUserId', currentAnonUserId);
+            }
+
+            // 5. Build and log sentiment metrics
+            const sentimentLabel = response.data.sentiment_score > 0.6 ? 'positive' :
+                response.data.sentiment_score < 0.4 ? 'concerning' : 'neutral';
+            console.log(`Sentiment analysis: ${sentimentLabel} (${(response.data.sentiment_score * 100).toFixed(1)}%)`);
+
+            // 6. Persist successful entry locally
+            const newEntry = {
+                id: response.data.id,
+                timestamp: response.data.timestamp,
+                sentiment_score: response.data.sentiment_score,
+                anomaly_flag: response.data.anomaly_flag,
+                user_text: text.trim(),
+                anon_user_id: currentAnonUserId,
+            };
+            saveEntryLocally(newEntry, currentAnonUserId);
+            console.log('CheckinForm: Added entry to localStorage');
+
+            // 7. Reset Form UI & Refresh Chart
+            setText('');
+            onSuccess();
+
+        } catch (err: any) {
+            // 8. Clean, structured error logging to inspect exactly what failed
+            console.error('CheckinForm: API error details:', {
+                message: err.message,
+                code: err.code,
+                status: err.response?.status,
+                data: err.response?.data
+            });
+
+            // 9. Informative error message handling based on real error signatures
+            if (err.code === 'ECONNABORTED') {
+                setError("Request timed out. The server might be starting up, please try again.");
+            } else if (err.response?.status === 500) {
+                setError("Server database error. Your entry has been saved locally as a backup.");
+            } else if (err.response?.status >= 400) {
+                setError(`Server rejected request (${err.response.status}): ${err.response.data?.detail || 'Invalid submission format'}`);
+            } else if (err.request) {
+                setError("Cannot reach server. Saved entry locally to sync when connection returns.");
+            } else {
+                setError(`Submission error: ${err.message || 'Saved offline backup.'}`);
+            }
+
+            // 10. Fallback: Save offline backup entry so your data is never lost
+            const fallbackId = currentAnonUserId || `anon-${crypto.randomUUID()}`;
+            if (!localStorage.getItem('anonUserId')) {
+                localStorage.setItem('anonUserId', fallbackId);
+            }
+
+            const offlineEntry = {
+                id: `offline-${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                sentiment_score: 0.5, // Default baseline neutral sentiment
+                anomaly_flag: false,
+                user_text: text.trim(),
+                offline: true,
+                anon_user_id: fallbackId,
+            };
+
+            saveEntryLocally(offlineEntry, fallbackId);
+            console.log('CheckinForm: Saved offline backup entry to localStorage');
+
+            // 11. Clear form and trigger chart updates anyway to showcase offline data
+            setText('');
+            onSuccess();
+
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div>
+            {/* {spinnerVisible ? */}
+            {/* Source - https://stackoverflow.com/a/47842233
         Posted by Alex
         Retrieved 2026-07-09, License - CC BY-SA 3.0 */}
 
-      {/* <img src={spinner} alt="loading..." /> */}
+            {/* <img src={spinner} alt="loading..." /> */}
 
-      {/* : */}
-        <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
+            {/* : */}
+            <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">Daily Mental Health Check-in</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -165,8 +199,8 @@ const CheckinForm: React.FC<CheckinFormProps> = ({ onSuccess }) => {
                             id="reflection-text"
                             value={text}
                             onChange={(e) => {
-                            setText(e.target.value);
-                            setError(null);
+                                setText(e.target.value);
+                                setError(null);
                             }}
                             rows={6}
                             placeholder="Write about your day, your feelings, thoughts, or anything you'd like to share..."
@@ -182,36 +216,35 @@ const CheckinForm: React.FC<CheckinFormProps> = ({ onSuccess }) => {
                                 <button
                                     type="button"
                                     onClick={isListening ? stopListening : startListening}
-                                    className={`flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors ${
-                                    isListening 
-                                        ? 'text-red-600 bg-red-50 hover:bg-red-100' 
+                                    className={`flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors ${isListening
+                                        ? 'text-red-600 bg-red-50 hover:bg-red-100'
                                         : 'text-blue-600 bg-blue-50 hover:bg-blue-100'
-                                    }`}
+                                        }`}
                                     title={isListening ? 'Stop voice input' : 'Start voice input'}
                                 >
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"></path>
-                                </svg>
-                                <span>{isListening ? 'Listening...' : 'Voice Input'}</span>
-                            </button>
-                        )}
-                    </div>
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd"></path>
+                                    </svg>
+                                    <span>{isListening ? 'Listening...' : 'Voice Input'}</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {error && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="flex items-center">
-                        <svg className="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path>
-                        </svg>
-                        <p className="text-red-800 font-medium">{error}</p>
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <div className="flex items-center">
+                                <svg className="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path>
+                                </svg>
+                                <p className="text-red-800 font-medium">{error}</p>
+                            </div>
                         </div>
-                    </div>
                     )}
 
                     <div className="flex justify-center">
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={loading || text.trim().length < 20}
                             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-8 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                         >
@@ -220,9 +253,9 @@ const CheckinForm: React.FC<CheckinFormProps> = ({ onSuccess }) => {
                     </div>
                 </form>
             </div>
-        {/* } */}
-    </div>
-  );
+            {/* } */}
+        </div>
+    );
 };
 
 export default CheckinForm;

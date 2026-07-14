@@ -9,7 +9,8 @@ import {
   LineElement, 
   Title, 
   Tooltip, 
-  Legend 
+  Legend,
+  Filler 
 } from 'chart.js';
 
 // Register all necessary components for Chart.js
@@ -20,7 +21,8 @@ ChartJS.register(
   LineElement, 
   Title, 
   Tooltip, 
-  Legend
+  Legend,
+  Filler
 );
 
 interface CheckinData {

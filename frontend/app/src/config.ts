@@ -13,12 +13,11 @@ const getApiBaseUrl = (): string => {
   console.log('Environment dev flag:', import.meta.env?.DEV);
   console.log('Environment prod flag:', import.meta.env?.PROD);
   
-  // Fallback logic for different environments
-  if (envUrl && envUrl.trim() !== '') {
+  // Clean check: Ensure it is a valid string and NOT the literal words "undefined" or "null"
+  if (envUrl && envUrl.trim() !== '' && envUrl !== 'undefined' && envUrl !== 'null') {
     console.log('✅ Using API URL from environment:', envUrl);
     return envUrl.trim();
   }
-  
   
   // Production fallback - require explicit env var for production builds.
   // Default to development host but warn loudly to prevent accidental calls
