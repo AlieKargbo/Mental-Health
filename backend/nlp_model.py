@@ -81,7 +81,7 @@ import requests
 
 # --- Configuration ---
 MODEL_NAME = "cardiffnlp/twitter-roberta-base-sentiment-latest"
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
+API_URL = "https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest"
 
 # Get the token securely from Render's environment variables
 HF_TOKEN = os.getenv("HF_TOKEN")
