@@ -13,4 +13,4 @@ COPY . ./
 RUN pip install --no-cache-dir fastapi uvicorn
 
 # Run the web service on container startup.
-CMD ["python", "start_server.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
