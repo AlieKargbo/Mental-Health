@@ -80,7 +80,8 @@ import os
 import requests
 
 # --- Configuration ---
-MODEL_NAME = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+# --- Configuration ---
+MODEL_NAME = "distilbert-base-uncased-finetuned-sst-2-english"
 API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
 
 # Get the token securely from Render's environment variables
