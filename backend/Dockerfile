@@ -10,7 +10,8 @@ WORKDIR $APP_HOME
 COPY . ./
 
 # Install production dependencies.
-RUN pip install --no-cache-dir fastapi uvicorn
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Run the web service on container startup.
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
