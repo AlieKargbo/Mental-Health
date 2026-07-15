@@ -6,6 +6,7 @@ from typing import List, Optional
 # Third-party libraries
 from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 # Local modules
 from nlp_model import analyze_text
@@ -110,7 +111,7 @@ def health_check():
 
 # --- CORS Headers (Crucial for Hosting) ---
 # Enable CORS for frontend development
-from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
