@@ -88,22 +88,16 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 
 def map_label_to_score(label: str, score: float) -> float:
     """
-    Maps both DistilBERT and CardiffNLP categorical outputs to a 0.0 to 1.0 scale.
+    Maps the DistilBERT categorical output ('POSITIVE' / 'NEGATIVE') 
+    to a numerical scale from 0.0 to 1.0.
     """
     label = label.upper().strip()
-    
-    # Positive cases
-    if "POSITIVE" in label or "LABEL_2" in label:
-        return score  # Closer to 1.0 is more positive
-        
-    # Negative cases
-    elif "NEGATIVE" in label or "LABEL_0" in label:
-        return 1.0 - score  # Closer to 0.0 is more negative
-        
-    # Neutral cases
+    if "POSITIVE" in label:
+        return score  # Closer to 1.0 means highly positive
+    elif "NEGATIVE" in label:
+        return 1.0 - score  # Closer to 0.0 means highly negative (e.g., 1.0 - 0.99 = 0.01)
     else:
-        # CardiffNLP uses LABEL_1 for Neutral. We return 0.5
-        return 0.5
+        return 0.5  # Fallback Neutral
 
 def analyze_text(text: str) -> dict:
     """Performs sentiment analysis via Hugging Face Inference API and returns scores."""
@@ -125,8 +119,11 @@ def analyze_text(text: str) -> dict:
         response.raise_for_status()
         result = response.json()
         
-        # DistilBERT returns a nested list format: [[{"label": "POSITIVE", "score": 0.99}, ...]]
+        # DistilBERT returns a double-nested list: [[{"label": "NEGATIVE", "score": 0.99}, ...]]
+        # We extract the first inner list
         predictions = result[0]
+        
+        # Find the prediction dictionary with the maximum 'score' value
         top_prediction = max(predictions, key=lambda x: x['score'])
         
         label = top_prediction['label']
