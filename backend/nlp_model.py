@@ -88,16 +88,22 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 
 def map_label_to_score(label: str, score: float) -> float:
     """
-    Maps the DistilBERT categorical output ('POSITIVE' / 'NEGATIVE') 
-    to a numerical scale from 0.0 to 1.0.
+    Maps both DistilBERT and CardiffNLP categorical outputs to a 0.0 to 1.0 scale.
     """
     label = label.upper().strip()
-    if "POSITIVE" in label:
-        return score  # Closer to 1.0 means highly positive
-    elif "NEGATIVE" in label:
-        return 1.0 - score  # Closer to 0.0 means highly negative
+    
+    # Positive cases
+    if "POSITIVE" in label or "LABEL_2" in label:
+        return score  # Closer to 1.0 is more positive
+        
+    # Negative cases
+    elif "NEGATIVE" in label or "LABEL_0" in label:
+        return 1.0 - score  # Closer to 0.0 is more negative
+        
+    # Neutral cases
     else:
-        return 0.5  # Fallback Neutral
+        # CardiffNLP uses LABEL_1 for Neutral. We return 0.5
+        return 0.5
 
 def analyze_text(text: str) -> dict:
     """Performs sentiment analysis via Hugging Face Inference API and returns scores."""
