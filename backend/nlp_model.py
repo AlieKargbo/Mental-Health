@@ -75,31 +75,32 @@
 
 #NEW CODE WITH RENDER
 
-# nlp_model.py
+# backend/nlp_model.py
 import os
 import requests
 
 # --- Configuration ---
-# --- Configuration ---
-MODEL_NAME = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+MODEL_NAME = "distilbert-base-uncased-finetuned-sst-2-english"
 API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
 
 # Get the token securely from Render's environment variables
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 def map_label_to_score(label: str, score: float) -> float:
-    """Maps the model's categorical output (e.g., POSITIVE/NEGATIVE/NEUTRAL) to a numerical 0.0 to 1.0 score."""
-    label = label.upper()
-    if "POSITIVE" in label or "LABEL_2" in label: # CardifNLP sometimes uses LABEL_2 for positive
-        return score  
-    elif "NEGATIVE" in label or "LABEL_0" in label: # LABEL_0 for negative
-        return 1.0 - score  
-    else:  
-        # Neutral (LABEL_1)
-        return 0.5 + (score * 0.1)
+    """
+    Maps the DistilBERT categorical output ('POSITIVE' / 'NEGATIVE') 
+    to a numerical scale from 0.0 to 1.0.
+    """
+    label = label.upper().strip()
+    if "POSITIVE" in label:
+        return score  # Closer to 1.0 means highly positive
+    elif "NEGATIVE" in label:
+        return 1.0 - score  # Closer to 0.0 means highly negative
+    else:
+        return 0.5  # Fallback Neutral
 
 def analyze_text(text: str) -> dict:
-    """Performs RoBERTa analysis via Hugging Face Inference API and returns scores."""
+    """Performs sentiment analysis via Hugging Face Inference API and returns scores."""
     if not HF_TOKEN:
         print("Warning: HF_TOKEN environment variable is not set. Using default fallback values.")
         return {"sentiment": 0.5, "intensity": 0.0}
@@ -110,7 +111,7 @@ def analyze_text(text: str) -> dict:
     try:
         response = requests.post(API_URL, headers=headers, json=payload, timeout=10.0)
         
-        # If Hugging Face is still loading the model into their server cache (returns 503)
+        # If Hugging Face is still loading the model into cache (returns 503)
         if response.status_code == 503:
             print("Model is currently loading on Hugging Face. Returning fallback default.")
             return {"sentiment": 0.5, "intensity": 0.0}
@@ -118,8 +119,7 @@ def analyze_text(text: str) -> dict:
         response.raise_for_status()
         result = response.json()
         
-        # Hugging Face text classification returns a nested list: [[{"label": "...", "score": ...}, ...]]
-        # We find the prediction with the highest confidence score
+        # DistilBERT returns a nested list format: [[{"label": "POSITIVE", "score": 0.99}, ...]]
         predictions = result[0]
         top_prediction = max(predictions, key=lambda x: x['score'])
         
